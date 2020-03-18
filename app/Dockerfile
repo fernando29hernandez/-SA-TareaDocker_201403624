@@ -11,4 +11,4 @@ RUN pip install -r requirements.txt
 # copia del archivo Server.py a la carpeta app
 COPY Server.py /app
 # configuracion del comando para correr la aplicacion
-CMD python app.py
+CMD python Server.py
