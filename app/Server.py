@@ -2,6 +2,7 @@ from typing import List, Dict  # import del manejo de listas
 from flask import Flask  # import para el funcionamiento general de flask
 import mysql.connector  # import de conexion con mysql
 import json  # import para el manejo de variables tipo json
+from flask import render_template ## Import encargado de renderizar las templates 
 
 app = Flask(__name__)  # creacion de la app en python de flask
 
