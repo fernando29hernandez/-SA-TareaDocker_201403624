@@ -31,10 +31,10 @@ def estudiante() -> List[Dict]:
 
 # FUNCION de tipo get para mostrar los datos de la BD
 @app.route('/')
-def index() -> str:
-    return json.dumps({'estudiantes': estudiante()})
+def index():
+    return render_template("index.html", results=estudiante())
 
 
 if __name__ == '__main__':
     # comando para configurar la ip del servicio
-    app.run(host='127.0.0.1')
+    app.run(host='0.0.0.0')
