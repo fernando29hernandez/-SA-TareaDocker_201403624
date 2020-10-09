@@ -3,22 +3,14 @@ from flask import Flask  # import para el funcionamiento general de flask
 import mysql.connector  # import de conexion con mysql
 import json  # import para el manejo de variables tipo json
 from flask import request  ## Import encargado de renderizar las templates 
-
-app = Flask(__name__)  # creacion de la app en python de flask
-
-
 import random
 import sys
 import time
 from datetime import timedelta, datetime
 
-# You can use the functions in othello_shared to write your AI 
+app = Flask(__name__)  # creacion de la app en python de flask
 
 def find_lines(board, i, j, player):
-    """
-    Find all the uninterupted lines of stones that would be captured if player
-    plays column i and row j. 
-    """
     lines = []
     for xdir, ydir in [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], 
                        [-1, 0], [-1, 1]]:
@@ -45,10 +37,6 @@ def find_lines(board, i, j, player):
    
 
 def get_possible_moves(board, player):
-    """
-    Return a list of all possible (column,row) tuples that player can play on
-    the current board. 
-    """
     result = []
     for i in range(len(board)):
         for j in range(len(board)):
@@ -87,8 +75,6 @@ def get_score(board):
     return p1_count, p2_coun
 corners = [(0,0),(0,7),(7,0),(7,7)]
 
-def compute_utility(board, color):
-    return 0
 
 def get_score_weighted(board):
 
@@ -125,22 +111,16 @@ def get_score_weighted(board):
         return p1_weighted, p2_weighted
     else:
         return p1_count, p2_count
-    
 
-#alphabeta_min_node(board, color, alpha, beta, level, limit)
-def alphabeta_min_node(board, color, depth, alpha, beta, end_time, debug_mode):
-
+def minimax_min_node(board, color, depth, end_time):
     possible_moves = get_possible_moves(board, color)
-    if debug_mode:
-        print("Starting Min")
-        print(possible_moves)
     current_time = datetime.now()
     if possible_moves == [] or depth==0 or current_time >= end_time:
         score = get_score_weighted(board) #get_score(board)
-        if color == 1: #then min is black, so ai player is white
-            return score[1]-score[0] #score for ai white
+        if color == 1: #then ai player is white
+            return score[1]-score[0] #score for ai black
         else:
-            return score[0]-score[1] #score for ai black
+            return score[0]-score[1] #score for ai white
     else:
         if color == 1: 
             next_color = 2
@@ -148,42 +128,16 @@ def alphabeta_min_node(board, color, depth, alpha, beta, end_time, debug_mode):
             next_color = 1
         best_min_score = 1000000
         for move in possible_moves:
-            if move in corners:
-                if debug_mode:
-                    print("In min - playing a corner")
-                new_board = play_move(board, color, move[0], move[1])
-                score = get_score_weighted(new_board)
-                if color == 1: #then min is black, so ai player is white
-                		return score[1]-score[0] #score for ai white
-                else:
-                		return score[0]-score[1] #score for ai black
-
-            if debug_mode:
-                print("MIN Playing Move: (" + str(move[0]) + ", " + str(move[1])+")")
-
             new_board = play_move(board, color, move[0], move[1])
-
-            move_score = alphabeta_max_node(new_board, next_color, depth-1, alpha, beta, end_time, debug_mode)
-            if debug_mode:
-                print("In Min: Move Score " + str(move_score)+ " for (" + str(move[0]) + ", " + str(move[1]) + ")")
-
+            move_score = minimax_max_node(new_board, next_color, depth-1, end_time)
             if move_score < best_min_score:
                 best_min_score = move_score
-                beta = min(beta, move_score)
-            if beta <= alpha:
-                break
-        #print("In Min: Returning Lowest Move Score" + str(best_min_score))
         return best_min_score
     return None
-def alphabeta_max_node(board, color, depth, alpha, beta, end_time, debug_mode):
-    
-    if debug_mode:
-        print("Starting Max")
 
+
+def minimax_max_node(board, color, depth, end_time):
     possible_moves = get_possible_moves(board, color)
-    if debug_mode:
-        print("Starting Max")
-        print(possible_moves)
     current_time = datetime.now()
     if possible_moves == [] or depth==0 or current_time >= end_time:
         score = get_score_weighted(board) #get_score(board)
@@ -199,84 +153,126 @@ def alphabeta_max_node(board, color, depth, alpha, beta, end_time, debug_mode):
         
         best_max_score = -1000000
         for move in possible_moves:
+            new_board = play_move(board, color, move[0], move[1])
+            move_score = minimax_min_node(new_board, next_color, depth-1, end_time)
+            if move_score > best_max_score:
+                best_max_score = move_score
+        return best_max_score
+    return None 
+
+    
+def select_move_minimax(board, color, depth, end_time):
+    best_max_score = -10000000
+    possible_moves = get_possible_moves(board, color)
+    if color == 1: 
+        next_color = 2
+    else:
+        next_color = 1
+    for move in possible_moves:
+        new_board = play_move(board, color, move[0], move[1])
+        move_score = minimax_min_node(new_board, next_color, depth-1, end_time)
+        if move_score > best_max_score:
+            best_max_score = move_score
+            best_move = move
+    return best_move
+
+def alphabeta_min_node(board, color, depth, alpha, beta, end_time):
+
+    possible_moves = get_possible_moves(board, color)
+    current_time = datetime.now()
+    if possible_moves == [] or depth==0 or current_time >= end_time:
+        score = get_score_weighted(board) 
+        if color == 1:
+            return score[1]-score[0]
+        else:
+            return score[0]-score[1] 
+    else:
+        if color == 1: 
+            next_color = 2
+        else:
+            next_color = 1
+        best_min_score = 1000000
+        for move in possible_moves:
             if move in corners:
-                if debug_mode:
-                    print("In max - playing a corner")
                 new_board = play_move(board, color, move[0], move[1])
                 score = get_score_weighted(new_board)
-                if color == 1: #then ai player is black
-                		return score[0]-score[1] #score for ai black
+                if color == 1: 
+                		return score[1]-score[0]
                 else:
-                		return score[1]-score[0] #score for ai white
-            if debug_mode:
-                print("MAX Playing Move: (" + str(move[0]) + ", " + str(move[1])+")")
-
+                		return score[0]-score[1] 
             new_board = play_move(board, color, move[0], move[1])
-            move_score = alphabeta_min_node(new_board, next_color, depth-1, alpha, beta, end_time, debug_mode)
-            if debug_mode:
-                print("In Max: Move Score " + str(move_score)+ " for (" + str(move[0]) + ", " + str(move[1]) +")")
+            move_score = alphabeta_max_node(new_board, next_color, depth-1, alpha, beta, end_time)
+            if move_score < best_min_score:
+                best_min_score = move_score
+                beta = min(beta, move_score)
+            if beta <= alpha:
+                break
+        return best_min_score
+    return None
+
+def alphabeta_max_node(board, color, depth, alpha, beta, end_time):
+    possible_moves = get_possible_moves(board, color)
+    current_time = datetime.now()
+    if possible_moves == [] or depth==0 or current_time >= end_time:
+        score = get_score_weighted(board)
+        if color == 1: 
+            return score[0]-score[1] 
+        else:
+            return score[1]-score[0] 
+    else:
+        if color == 1: 
+            next_color = 2
+        else:
+            next_color = 1
+        
+        best_max_score = -1000000
+        for move in possible_moves:
+            if move in corners:
+                new_board = play_move(board, color, move[0], move[1])
+                score = get_score_weighted(new_board)
+                if color == 1: 
+                		return score[0]-score[1] 
+                else:
+                		return score[1]-score[0] 
+            new_board = play_move(board, color, move[0], move[1])
+            move_score = alphabeta_min_node(new_board, next_color, depth-1, alpha, beta, end_time)
             if move_score > best_max_score:
                 best_max_score = move_score
                 alpha = max(alpha, move_score)
             if beta <= alpha:
                 break
-        
-        if debug_mode:
-            print("In Max: Returning Best Move Score " + str(best_max_score))
-            
         return best_max_score
     return None
 
-def select_move_alphabeta(board, color, depth, end_time, debug_mode): 
-    """
-    Given a board and a player color, decide on a move. 
-    The return value is a tuple of integers (i,j), where
-    i is the column and j is the row on the board.  
-    """
+def select_move_alphabeta(board, color, depth, end_time): 
     best_max_score = -10000000
     alpha = -1000000
     beta = 1000000
     best_move = []
     
-    possible_moves = get_possible_moves(board, color)
-    if debug_mode:
-        print("-----------------------Starting Select---------------------------")
-        print(possible_moves)
-        
+    possible_moves = get_possible_moves(board, color)        
     if color == 1: 
         next_color = 2
     else:
         next_color = 1
     
     for move in possible_moves:
-        #return move[0], move[1] #SPECIAL RETURN SEE IF ITS WORKING
         if move in corners:
             return move
-        if debug_mode:
-            print("SELECT Playing Move: (" + str(move[0]) + ", " + str(move[1])+")")
         new_board = play_move(board, color, move[0], move[1])
-        move_score = alphabeta_min_node(new_board, next_color, depth-1, alpha, beta, end_time, debug_mode)
-        if debug_mode:
-            print("In Select: Move Score" + str(move_score))
-        
+        move_score = alphabeta_min_node(new_board, next_color, depth-1, alpha, beta, end_time)
         if move_score > best_max_score:
             best_max_score = move_score
             best_move = move
-
-    if debug_mode:
-        print("In Select: Returning Best Move Score" + str(best_max_score))
-
     return best_move
 
-
-# FUNCION de tipo get para mostrar los datos de la BD
 @app.route('/')
 def index():
     turno = request.args.get('turno')
     turno = int(turno)
-    estado = request.args.get('estado')
+    estado = request.args.get('estado')#1212121212121211
     response = 24
-    lista = list(estado)
+    lista = list(estado)#['1','2','2']
     contador = 1
     tablero = []
     fila = []
@@ -306,11 +302,10 @@ def index():
     color = 1
     if turno==1:
        color = 2
-    debug_mode=False
     current_time = datetime.now()
     end_time = current_time + timedelta(seconds=15)
-    movei, movej = select_move_alphabeta(board, color, 2, end_time, debug_mode) #Choose depth
-    response=str(movej)+''+str(movei)
+    movei, movej = select_move_minimax(board, color, 2, end_time)
+    response=str(movej)+''+str(movei)#24
     return str(response)
 
 
